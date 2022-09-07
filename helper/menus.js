@@ -1,7 +1,5 @@
 const inquirer = require("inquirer");
 
-startMenu();
-
 function startMenu() {
 	inquirer
 		.prompt([
