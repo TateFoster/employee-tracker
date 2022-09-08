@@ -16,4 +16,5 @@ VALUES
 ("Richard", "Williams", 1, null),
 ("Linda", "Wright", 2, null),
 ("Jeremy", "Boob", 4, 2),
-("Diana", "Bobana", 3, null);
+("Diana", "Bobana", 3, null),
+("Thorin", "Oakenshield", 4, 2);
