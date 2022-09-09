@@ -16,7 +16,9 @@ CREATE TABLE role (
     department_id INT NOT NULL,
     FOREIGN KEY (department_id)
     REFERENCES department(id)
-    ON DELETE CASCADE
+    ON DELETE CASCADE,
+    is_manager BOOLEAN NOT NULL,
+    manager_tier INT
 );
 
 CREATE TABLE employee (

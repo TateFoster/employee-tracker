@@ -11,11 +11,11 @@ const checkText = (input) => {
 const checkSalary = (input) => {
 	const numbers = /^[0-9]*$/g;
 	const characters = /^[a-z!@#$%^&*()_=\-=\[\]{};':"\\|,.<>\/?]*$/gi;
-	if (numbers.test(input) && !numbers.test(characters)) {
+	if (numbers.test(input) && !numbers.test(characters && input.trim().length)) {
 		return true;
 	} else {
 		return console.log(
-			"\n\x1B[31mThat is not a valid entry. Please input salary only in numerical values without any other type of character"
+			"\n\x1B[31mThat is not a valid entry. Please input numerical values without any other type of character"
 		);
 	}
 };

@@ -13,6 +13,7 @@ function startMenu() {
 				message: "What would you like to view?",
 				choices: ["Departments", "Roles", "Employees", "Quit"],
 				name: "sectionChoice",
+				loop: false,
 			},
 		])
 		.then((answer) => {
@@ -26,7 +27,7 @@ function startMenu() {
 					break;
 
 				case "Employees":
-					console.log("Employees chosen");
+					employeeMenu();
 
 					break;
 
@@ -60,6 +61,7 @@ const departmentsMenu = async () => {
 				"Back to main menu",
 			],
 			name: "choice",
+			loop: false,
 		},
 	]);
 
@@ -94,6 +96,7 @@ const departmentSummary = async () => {
 			message: "Which department would you like a summary of?",
 			choices: department,
 			name: "choice",
+			loop: false,
 		},
 	]);
 
@@ -113,6 +116,7 @@ const departmentSummary = async () => {
 				"Return to Start Menu",
 			],
 			name: "location",
+			loop: false,
 		},
 	]);
 
@@ -168,6 +172,7 @@ const removeDepartment = async () => {
 				message: "Which department would you like to delete?",
 				choices: department,
 				name: "deleteChoice",
+				loop: false,
 			},
 		]);
 		if (deletePrompt.deleteChoice === "I don't want to delete any") {
@@ -190,18 +195,19 @@ const roleMenu = async () => {
 			type: "list",
 			message: "Which would you like to do?",
 			choices: [
-				"View Role Summary",
+				"View Role by Department",
 				"Add Role",
 				"Remove Role",
 				"Back to main menu",
 			],
 			name: "choice",
+			loop: false,
 		},
 	]);
 
 	switch (answer.choice) {
-		case "View Role Summary":
-			roleSummary();
+		case "View Role by Department":
+			roleByDepartment();
 			break;
 
 		case "Add Role":
@@ -222,7 +228,32 @@ const roleMenu = async () => {
 	}
 };
 
-const roleSummary = async () => {};
+const roleByDepartment = async () => {
+	const department = await db("SELECT * FROM department");
+	department.push("Back to Role Menu");
+
+	const departmentRole = await inquirer.prompt([
+		{
+			type: "list",
+			message: "What department do you want to view the roles of?",
+			choices: department,
+			name: "roleDepartment",
+			loop: false,
+		},
+	]);
+
+	if (departmentRole.roleDepartment === "Back to Role Menu") {
+		roleMenu();
+	} else {
+		const rolesInDepartment = await db(
+			"SELECT department.name AS Department, role.title AS 'Role Title', COUNT(employee.id) AS 'Employees in Position' FROM department LEFT JOIN role ON department.id = role.department_id LEFT JOIN employee ON role.id = employee.role_id WHERE department.name = ? GROUP BY role.title",
+			departmentRole.roleDepartment
+		);
+
+		console.table("\n", rolesInDepartment);
+		roleByDepartment();
+	}
+};
 
 const addRole = async () => {
 	const department = await db("SELECT * FROM department");
@@ -239,12 +270,19 @@ const addRole = async () => {
 			message: "What department is this role a part of?",
 			choices: department,
 			name: "roleDepartment",
+			loop: false,
 		},
 		{
 			type: "input",
 			message: "What is the salary of this position?",
 			name: "roleSalary",
 			validate: checkSalary,
+		},
+		{
+			type: "confirm",
+			message: "Is this position a management position?",
+			default: false,
+			name: "manager",
 		},
 	]);
 
@@ -254,13 +292,30 @@ const addRole = async () => {
 	);
 	const { id } = departmentId[0];
 
-	db("INSERT INTO role (title, salary, department_id) VALUES ( ?, ?, ? )", [
-		newRole.roleName,
-		newRole.roleSalary,
-		id,
-	]);
+	if (newRole.manager) {
+		const tier = await inquirer.prompt([
+			{
+				type: "input",
+				message: "What level manager is this position? (1 being lowest)",
+				name: "managerLevel",
+				validate: checkSalary,
+			},
+		]);
 
-	roleMenu();
+		db(
+			"INSERT INTO role (title, salary, department_id, is_manager, manager_tier) VALUES ( ?, ?, ?, true, ? )",
+			[newRole.roleName, newRole.roleSalary, id, tier.managerLevel]
+		);
+
+		roleMenu();
+	} else {
+		db(
+			"INSERT INTO role (title, salary, department_id, is_manager, manager_tier) VALUES ( ?, ?, ?, false, null )",
+			[newRole.roleName, newRole.roleSalary, id]
+		);
+
+		roleMenu();
+	}
 };
 
 const removeRole = async () => {
@@ -285,6 +340,7 @@ const removeRole = async () => {
 				message: "Which role would you like to delete?",
 				choices: role,
 				name: "deleteChoice",
+				loop: false,
 			},
 		]);
 		if (deletePrompt.deleteRole === "I don't want to delete any") {
@@ -295,5 +351,144 @@ const removeRole = async () => {
 		}
 	}
 };
+
+const employeeMenu = async () => {
+	const employeeInfo = await db(
+		"SELECT department.name AS Department, role.title AS 'Job Title', CONCAT(employee.first_name, ' ', employee.last_name) AS Employee, role.salary AS Salary, CONCAT(m.first_name, ' ', m.last_name)AS Manager FROM department JOIN role ON department.id = role.department_id JOIN employee ON role.id = employee.role_id LEFT JOIN employee m ON m.id = employee.manager_id ORDER BY department.id"
+	);
+
+	console.table("\n", employeeInfo);
+
+	const answer = await inquirer.prompt([
+		{
+			type: "list",
+			message: "Which would you like to do?",
+			choices: [
+				"View Employee by Role/Manager/Department",
+				"Update Employee Info",
+				"Add New Employee",
+				"Remove Employee",
+				"Back to main menu",
+			],
+			name: "choice",
+			loop: false,
+		},
+	]);
+
+	switch (answer.choice) {
+		case "View Employee by Role/Manager/Department":
+			employeeBy();
+			break;
+
+		case "Update Employee Info":
+			addEmployee();
+			break;
+
+		case "Add Employee":
+			addEmployee();
+			break;
+
+		case "Remove Employee":
+			removeEmployee();
+			break;
+
+		case "Back to main menu":
+			startMenu();
+			break;
+
+		default:
+			console.error("\x1b[31mSomething has gone wrong");
+			break;
+	}
+};
+
+const employeeBy = async () => {
+	const viewEmployee = await inquirer.prompt([
+		{
+			type: "list",
+			message: "What would you like to view employees by?",
+			choices: ["Role", "Manager", "Department"],
+			name: "employeeView",
+			loop: false,
+		},
+	]);
+
+	switch (viewEmployee.employeeView) {
+		case "Role":
+			employeeByRole();
+			break;
+
+		case "Manager":
+			employeeByManager();
+			break;
+
+		case "Department":
+			employeeByDepartment();
+			break;
+
+		default:
+			console.error("\x1b[31mSomething has gone wrong");
+			break;
+	}
+};
+
+const employeeByRole = async () => {
+	const role = await db("SELECT title AS name FROM role ORDER BY title");
+	role.push("I don't want to view any of these roles");
+
+	const roleView = await inquirer.prompt([
+		{
+			type: "list",
+			message: "Which role would you like to view employee list for?",
+			choices: role,
+			name: "choice",
+			loop: false,
+		},
+	]);
+
+	if (roleView.choice === "I don't want to view any of these roles") {
+		employeeMenu();
+	} else {
+		const employeeRoleDisplay = await db(
+			"SELECT department.name AS Department, role.title AS 'Job Title', CONCAT(employee.first_name, ' ', employee.last_name) AS Employee, role.salary AS Salary, CONCAT(m.first_name, ' ', m.last_name)AS Manager FROM department JOIN role ON department.id = role.department_id JOIN employee ON role.id = employee.role_id LEFT JOIN employee m ON m.id = employee.manager_id WHERE role.title = ? ORDER BY employee.id",
+			roleView.choice
+		);
+		console.table("\n", employeeRoleDisplay);
+		employeeByRole();
+	}
+};
+
+const employeeByManager = async () => {};
+
+const employeeByDepartment = async () => {
+	const department = await db("SELECT name FROM department");
+	department.push("I don't want to view any of these departments");
+
+	const departmentView = await inquirer.prompt([
+		{
+			type: "list",
+			message: "Which role would you like to view employee list for?",
+			choices: department,
+			name: "choice",
+			loop: false,
+		},
+	]);
+
+	if (
+		departmentView.choice === "I don't want to view any of these departments"
+	) {
+		employeeMenu();
+	} else {
+		const employeeDepartmentDisplay = await db(
+			"SELECT department.name AS Department, role.title AS 'Job Title', CONCAT(employee.first_name, ' ', employee.last_name) AS Employee, role.salary AS Salary, CONCAT(m.first_name, ' ', m.last_name)AS Manager FROM department JOIN role ON department.id = role.department_id JOIN employee ON role.id = employee.role_id LEFT JOIN employee m ON m.id = employee.manager_id WHERE department.name = ? ORDER BY employee.id",
+			departmentView.choice
+		);
+		console.table("\n", employeeDepartmentDisplay);
+		employeeByDepartment();
+	}
+};
+const addEmployee = async () => {};
+
+const removeEmployee = async () => {};
 
 module.exports = startMenu;
