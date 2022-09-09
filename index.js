@@ -1,4 +1,4 @@
-const start = require("./menus/startMenu");
+const start = require("./menus/menus");
 const data = require("./config/connection");
 const tables = require("console.table");
 const inquirer = require("inquirer");
