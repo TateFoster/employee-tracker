@@ -28,13 +28,13 @@ This is an application that allows the user to navigate menus to see and input d
 
 ---
 
-This application can be used to store information about a buisness to allow easy viewing of employee and department information.
+This application can be used to store information about a business to allow easy viewing of employee and department information.
 
 ## Installation
 
 ---
 
-This application needs to be downloaded, it's dependecies installed, and the mysql database to be generated. There is also seed data if someone wants to test functionality without generating their own data sets.
+This application needs to be downloaded, it's dependencies installed, and the mysql database to be generated. There is also seed data if someone wants to test functionality without generating their own data sets.
 
 ## License
 
