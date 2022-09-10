@@ -364,7 +364,7 @@ const employeeMenu = async () => {
 			type: "list",
 			message: "Which would you like to do?",
 			choices: [
-				"View Employee by Role/Manager/Department",
+				"View Employee by ___",
 				"Update Employee Info",
 				"Add New Employee",
 				"Remove Employee",
@@ -376,15 +376,15 @@ const employeeMenu = async () => {
 	]);
 
 	switch (answer.choice) {
-		case "View Employee by Role/Manager/Department":
+		case "View Employee by ___":
 			employeeBy();
 			break;
 
 		case "Update Employee Info":
-			addEmployee();
+			updateEmployee();
 			break;
 
-		case "Add Employee":
+		case "Add New Employee":
 			addEmployee();
 			break;
 
@@ -433,13 +433,15 @@ const employeeBy = async () => {
 };
 
 const employeeByRole = async () => {
-	const role = await db("SELECT title AS name FROM role ORDER BY title");
+	const role = await db(
+		"SELECT role.title AS name FROM role JOIN department ON department.id = role.department_id ORDER BY department.id"
+	);
 	role.push("I don't want to view any of these roles");
 
 	const roleView = await inquirer.prompt([
 		{
 			type: "list",
-			message: "Which role would you like to view employee list for?",
+			message: "Which role would you like to view employee list of?",
 			choices: role,
 			name: "choice",
 			loop: false,
@@ -453,12 +455,56 @@ const employeeByRole = async () => {
 			"SELECT department.name AS Department, role.title AS 'Job Title', CONCAT(employee.first_name, ' ', employee.last_name) AS Employee, role.salary AS Salary, CONCAT(m.first_name, ' ', m.last_name)AS Manager FROM department JOIN role ON department.id = role.department_id JOIN employee ON role.id = employee.role_id LEFT JOIN employee m ON m.id = employee.manager_id WHERE role.title = ? ORDER BY employee.id",
 			roleView.choice
 		);
-		console.table("\n", employeeRoleDisplay);
-		employeeByRole();
+		if (employeeRoleDisplay.length !== 0) {
+			console.table("\n", employeeRoleDisplay);
+			employeeByRole();
+		} else {
+			console.log("\nThere is currently nobody assigned to this role\n");
+			employeeByRole();
+		}
 	}
 };
 
-const employeeByManager = async () => {};
+const employeeByManager = async () => {
+	const manager = await db(
+		"Select CONCAT(employee.first_name, ' ', employee.last_name) AS name FROM role CROSS JOIN employee ON employee.role_id = role.id WHERE is_manager = true"
+	);
+	manager.push("I don't want to view any of these managers");
+
+	const managerView = await inquirer.prompt([
+		{
+			type: "list",
+			message: "Which manager would you like to view the employee list of?",
+			choices: manager,
+			name: "choice",
+			loop: false,
+		},
+	]);
+
+	if (managerView.choice === "I don't want to view any of these managers") {
+		employeeMenu();
+	} else {
+		const managerName = managerView.choice.split(" ");
+
+		const managerId = await db(
+			"SELECT id FROM employee WHERE first_name = ? AND last_name = ?",
+			managerName
+		);
+		const { id } = managerId[0];
+
+		const employeeManagerDisplay = await db(
+			"SELECT department.name AS Department, role.title AS 'Job Title', CONCAT(employee.first_name, ' ', employee.last_name) AS Employee, role.salary AS Salary, CONCAT(m.first_name, ' ', m.last_name)AS Manager FROM department JOIN role ON department.id = role.department_id JOIN employee ON role.id = employee.role_id LEFT JOIN employee m ON m.id = employee.manager_id WHERE employee.manager_id = ? ORDER BY employee.id",
+			id
+		);
+		if (employeeManagerDisplay.length !== 0) {
+			console.table("\n", employeeManagerDisplay);
+			employeeByManager();
+		} else {
+			console.log("\nThere is currently nobody assigned to this manager\n");
+			employeeByManager();
+		}
+	}
+};
 
 const employeeByDepartment = async () => {
 	const department = await db("SELECT name FROM department");
@@ -467,7 +513,7 @@ const employeeByDepartment = async () => {
 	const departmentView = await inquirer.prompt([
 		{
 			type: "list",
-			message: "Which role would you like to view employee list for?",
+			message: "Which department would you like to view employee list of?",
 			choices: department,
 			name: "choice",
 			loop: false,
@@ -483,12 +529,279 @@ const employeeByDepartment = async () => {
 			"SELECT department.name AS Department, role.title AS 'Job Title', CONCAT(employee.first_name, ' ', employee.last_name) AS Employee, role.salary AS Salary, CONCAT(m.first_name, ' ', m.last_name)AS Manager FROM department JOIN role ON department.id = role.department_id JOIN employee ON role.id = employee.role_id LEFT JOIN employee m ON m.id = employee.manager_id WHERE department.name = ? ORDER BY employee.id",
 			departmentView.choice
 		);
-		console.table("\n", employeeDepartmentDisplay);
-		employeeByDepartment();
+		if (employeeDepartmentDisplay.length !== 0) {
+			console.table("\n", employeeDepartmentDisplay);
+			employeeByDepartment();
+		} else {
+			console.log("\nThere is currently nobody assigned to this department\n");
+			employeeByDepartment();
+		}
 	}
 };
-const addEmployee = async () => {};
 
-const removeEmployee = async () => {};
+const updateEmployee = async () => {
+	const employees = await db(
+		"SELECT CONCAT(first_name, ' ', last_name) AS name FROM employee"
+	);
+	employees.push("I don't want to update an employee");
+
+	const updateConfirm = await inquirer.prompt([
+		{
+			type: "list",
+			message: "Which employee would you like to update?",
+			choices: employees,
+			name: "employeeChoice",
+			loop: false,
+		},
+	]);
+
+	if (updateConfirm.employeeChoice === "I don't want to update an employee") {
+		employeeMenu();
+	} else {
+		const employeeChoices = await inquirer.prompt([
+			{
+				type: "list",
+				message: "What would you like to update?",
+				choices: [
+					"Employee Role",
+					"Employee Manager",
+					"I don't want to update an employee",
+				],
+				loop: false,
+				name: "update",
+			},
+		]);
+		switch (employeeChoices.update) {
+			case "Employee Role":
+				updateEmployeeRole(updateConfirm.employeeChoice);
+				break;
+
+			case "Employee Manager":
+				updateEmployeeManager(updateConfirm.employeeChoice);
+				break;
+
+			case "I don't want to update an employee":
+				employeeMenu();
+				break;
+
+			default:
+				console.error("\x1b[31mSomething has gone wrong");
+				break;
+		}
+	}
+};
+
+const updateEmployeeRole = async (employee) => {
+	const role = await db("SELECT title AS name FROM role");
+
+	const newRole = await inquirer.prompt([
+		{
+			type: "list",
+			message: `What role would you like ${employee} to now have?`,
+			choices: role,
+			name: "choice",
+			loop: false,
+		},
+	]);
+
+	const roleInfo = await db(
+		"SELECT id AS roleId, department_id AS departmentId, manager_tier AS level FROM role WHERE title = ?",
+		newRole.choice
+	);
+	let { roleId, departmentId, level } = roleInfo[0];
+
+	if (level === null) {
+		level = 0;
+	}
+	const managerOptions = await db(
+		"SELECT CONCAT(employee.first_name, ' ', employee.last_name) AS name FROM employee JOIN role ON employee.role_id = role.id WHERE role.department_id = ? AND role.manager_tier > ?",
+		[departmentId, level]
+	);
+	managerOptions.push("None of the above");
+
+	const manager = await inquirer.prompt([
+		{
+			type: "list",
+			message: "Who is the employee's direct manager?",
+			choices: managerOptions,
+			name: "managerChoice",
+			loop: false,
+		},
+	]);
+	let newManager;
+
+	if (manager.managerChoice === "None of the above") {
+		newManager = null;
+	} else {
+		const managerInfo = await db(
+			"SELECT id AS managerId FROM employee WHERE first_name = ? AND last_name = ?",
+			manager.managerChoice.split(" ")
+		);
+		const { managerId } = managerInfo[0];
+		newManager = managerId;
+	}
+	const roleManager = [roleId, newManager];
+
+	const update = roleManager.concat(employee.split(" "));
+
+	db(
+		"UPDATE employee SET role_id = ?, manager_id = ? WHERE first_name = ? AND last_name = ? ",
+		update
+	);
+
+	employeeMenu();
+};
+
+const updateEmployeeManager = async (employee) => {
+	const roleNum = await db(
+		"SELECT role_id AS roleId FROM employee WHERE first_name = ? AND last_name = ?",
+		employee.split(" ")
+	);
+
+	const { roleId } = roleNum[0];
+	const roleInfo = await db(
+		"SELECT department_id AS departmentId, manager_tier AS level FROM role WHERE id = ?",
+		roleId
+	);
+	let { departmentId, level } = roleInfo[0];
+
+	if (level === null) {
+		level = 0;
+	}
+	const managerOptions = await db(
+		"SELECT CONCAT(employee.first_name, ' ', employee.last_name) AS name FROM employee JOIN role ON employee.role_id = role.id WHERE role.department_id = ? AND role.manager_tier > ?",
+		[departmentId, level]
+	);
+	managerOptions.push("None of the above");
+
+	const manager = await inquirer.prompt([
+		{
+			type: "list",
+			message: `Who is the employee's direct manager?`,
+			choices: managerOptions,
+			name: "managerChoice",
+			loop: false,
+		},
+	]);
+
+	if (manager.managerChoice === "None of the above") {
+		db(
+			"UPDATE employee SET manager_id = null WHERE first_name = ? AND last_name =?",
+			employee.split(" ")
+		);
+	} else {
+		const managerInfo = await db(
+			"SELECT id as managerId FROM employee WHERE first_name = ? AND last_name = ?",
+			manager.managerChoice.split(" ")
+		);
+		const { managerId } = managerInfo[0];
+
+		const update = employee.split(" ");
+		update.unshift(managerId);
+		db(
+			"UPDATE employee SET manager_id = ? WHERE first_name = ? AND last_name =?",
+			update
+		);
+	}
+	employeeMenu();
+};
+
+const addEmployee = async () => {
+	const role = await db("SELECT title AS name FROM role");
+
+	const employeeInfo = await inquirer.prompt([
+		{
+			type: "input",
+			message: "What is the employee's first name?",
+			name: "firstName",
+			validate: checkText,
+		},
+		{
+			type: "input",
+			message: "What is the employee's last name?",
+			name: "lastName",
+			validate: checkText,
+		},
+		{
+			type: "list",
+			message: "What is the employee's position?",
+			choices: role,
+			loop: false,
+			name: "roleChoice",
+		},
+	]);
+
+	const roleInfo = await db(
+		"SELECT id AS roleId, department_id AS departmentId, manager_tier AS level FROM role WHERE title = ?",
+		employeeInfo.roleChoice
+	);
+	let { roleId, departmentId, level } = roleInfo[0];
+
+	if (level === null) {
+		level = 0;
+	}
+	const managerOptions = await db(
+		"SELECT CONCAT(employee.first_name, ' ', employee.last_name) AS name FROM employee JOIN role ON employee.role_id = role.id WHERE role.department_id = ? AND role.manager_tier > ?",
+		[departmentId, level]
+	);
+	managerOptions.push("None of the above");
+
+	const manager = await inquirer.prompt([
+		{
+			type: "list",
+			message: "Who is the employee's direct manager?",
+			choices: managerOptions,
+			name: "managerChoice",
+			loop: false,
+		},
+	]);
+
+	if (manager.managerChoice === "None of the above") {
+		db(
+			"INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, null)",
+			[employeeInfo.firstName, employeeInfo.lastName, roleId]
+		);
+	} else {
+		const managerName = manager.managerChoice.split(" ");
+
+		const managerInfo = await db(
+			"SELECT id AS managerId FROM employee WHERE first_name = ? AND last_name = ?",
+			managerName
+		);
+		const { managerId } = managerInfo[0];
+		db(
+			"INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)",
+			[employeeInfo.firstName, employeeInfo.lastName, roleId, managerId]
+		);
+	}
+	employeeMenu();
+};
+
+const removeEmployee = async () => {
+	const employees = await db(
+		"SELECT CONCAT(first_name, ' ', last_name) AS name FROM employee"
+	);
+	employees.push("I don't want to delete any");
+
+	const deleteEmployee = await inquirer.prompt([
+		{
+			type: "list",
+			message: "Which employee would you like to remove?",
+			choices: employees,
+			name: "deleteChoice",
+			loop: false,
+		},
+	]);
+
+	if (deleteEmployee.deleteChoice === "I don't want to delete any") {
+		employeeMenu();
+	} else {
+		db(
+			"DELETE FROM employee WHERE first_name = ? AND last_name =?",
+			deleteEmployee.deleteChoice.split(" ")
+		);
+		employeeMenu();
+	}
+};
 
 module.exports = startMenu;

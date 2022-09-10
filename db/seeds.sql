@@ -19,4 +19,6 @@ VALUES
 ("Linda", "Wright", 2, NULL),
 ("Jeremy", "Boob", 4, 2),
 ("Diana", "Bobana", 3, NULL),
-("Thorin", "Oakenshield", 4, 2); 
+("Thorin", "Oakenshield", 4, 2), 
+("Robert", "Robertson", 5, 4),
+("Patrica", "Delmonte", 6, 6);

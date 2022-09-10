@@ -11,7 +11,7 @@ const checkText = (input) => {
 const checkSalary = (input) => {
 	const numbers = /^[0-9]*$/g;
 	const characters = /^[a-z!@#$%^&*()_=\-=\[\]{};':"\\|,.<>\/?]*$/gi;
-	if (numbers.test(input) && !numbers.test(characters && input.trim().length)) {
+	if (numbers.test(input) && !characters.test(input) && input.trim().length) {
 		return true;
 	} else {
 		return console.log(
