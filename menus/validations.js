@@ -1,3 +1,4 @@
+// validates that text is not left blank
 const checkText = (input) => {
 	if (typeof input !== "string" || !input.trim().length) {
 		return console.log(
@@ -8,6 +9,7 @@ const checkText = (input) => {
 	}
 };
 
+// validates that only numbers are input for the value
 const checkSalary = (input) => {
 	const numbers = /^[0-9]*$/g;
 	const characters = /^[a-z!@#$%^&*()_=\-=\[\]{};':"\\|,.<>\/?]*$/gi;

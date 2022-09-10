@@ -5,6 +5,7 @@ const util = require("util");
 const db = util.promisify(data.query).bind(data);
 const { checkText, checkSalary } = require("./validations");
 
+// This function checks on what the user would like to see and then directs to appropriate functions based on user input
 function startMenu() {
 	inquirer
 		.prompt([
@@ -45,6 +46,7 @@ function startMenu() {
 		});
 }
 
+// This function checks what the user would like to do involving the data from the department table in the database and directs to appropriate functions based on input. It also shows a list of all current departments
 const departmentsMenu = async () => {
 	const departments = await db("SELECT name AS Departments FROM department");
 
@@ -88,6 +90,7 @@ const departmentsMenu = async () => {
 	}
 };
 
+// This function takes user input to determine what part of the database to show the user and then pulls a summery of the department name, a sum of how much money the department spends on salaries based on current employees, and shows the total number of employees in that department, then allows the user to either see another or go back to a previous function.
 const departmentSummary = async () => {
 	const department = await db("SELECT * FROM department");
 	const departmentChoice = await inquirer.prompt([
@@ -137,6 +140,7 @@ const departmentSummary = async () => {
 	}
 };
 
+// This function adds a row to the department table of the database based on user input
 const addDepartment = async () => {
 	const newDepartment = await inquirer.prompt([
 		{
@@ -150,6 +154,8 @@ const addDepartment = async () => {
 
 	departmentsMenu();
 };
+
+// This function removes a row from the department table of the database based on user input
 const removeDepartment = async () => {
 	const deleteCheck = await inquirer.prompt([
 		{
@@ -184,6 +190,7 @@ const removeDepartment = async () => {
 	}
 };
 
+// This function takes user input to see what they would like to view from or do to the role table and directs them to appropriate functions and also displays all current roles and what salary they make and department they belong to
 const roleMenu = async () => {
 	const roles = await db(
 		"SELECT role.title AS 'Role Title', department.name AS Department, role.salary AS 'Average salary' FROM department JOIN role ON department.id = role.department_id ORDER BY department.id"
@@ -228,6 +235,7 @@ const roleMenu = async () => {
 	}
 };
 
+// This function looks at all the roles that share the same relationship with the department table
 const roleByDepartment = async () => {
 	const department = await db("SELECT * FROM department");
 	department.push("Back to Role Menu");
@@ -255,6 +263,7 @@ const roleByDepartment = async () => {
 	}
 };
 
+// This function adds a new role into the role table of the database
 const addRole = async () => {
 	const department = await db("SELECT * FROM department");
 
@@ -318,6 +327,7 @@ const addRole = async () => {
 	}
 };
 
+// This function removes a row from the role table on the database
 const removeRole = async () => {
 	const deleteCheck = await inquirer.prompt([
 		{
@@ -352,6 +362,7 @@ const removeRole = async () => {
 	}
 };
 
+// this function displays a list of all employees to the user with also showing what roles, salaries, departments and managers they have or belong to. it then checks what the user would like to do with or to the employee table in the database
 const employeeMenu = async () => {
 	const employeeInfo = await db(
 		"SELECT department.name AS Department, role.title AS 'Job Title', CONCAT(employee.first_name, ' ', employee.last_name) AS Employee, role.salary AS Salary, CONCAT(m.first_name, ' ', m.last_name)AS Manager FROM department JOIN role ON department.id = role.department_id JOIN employee ON role.id = employee.role_id LEFT JOIN employee m ON m.id = employee.manager_id ORDER BY department.id"
@@ -402,6 +413,7 @@ const employeeMenu = async () => {
 	}
 };
 
+// This checks user input to see what informational grouping they want to see employee data displayed by, Role, Manager or Department and then moves to correct function
 const employeeBy = async () => {
 	const viewEmployee = await inquirer.prompt([
 		{
@@ -432,6 +444,7 @@ const employeeBy = async () => {
 	}
 };
 
+// This displays the data of the employee table as separated to specific roles
 const employeeByRole = async () => {
 	const role = await db(
 		"SELECT role.title AS name FROM role JOIN department ON department.id = role.department_id ORDER BY department.id"
@@ -465,6 +478,7 @@ const employeeByRole = async () => {
 	}
 };
 
+// This displays the data of the employee table as separated to specific managers
 const employeeByManager = async () => {
 	const manager = await db(
 		"Select CONCAT(employee.first_name, ' ', employee.last_name) AS name FROM role CROSS JOIN employee ON employee.role_id = role.id WHERE is_manager = true"
@@ -506,6 +520,7 @@ const employeeByManager = async () => {
 	}
 };
 
+// This displays the data of the employee table as separated to specific departments
 const employeeByDepartment = async () => {
 	const department = await db("SELECT name FROM department");
 	department.push("I don't want to view any of these departments");
@@ -539,6 +554,7 @@ const employeeByDepartment = async () => {
 	}
 };
 
+// this function checks what employee information the user wishes to update between role or manager and directs to correct function
 const updateEmployee = async () => {
 	const employees = await db(
 		"SELECT CONCAT(first_name, ' ', last_name) AS name FROM employee"
@@ -591,6 +607,7 @@ const updateEmployee = async () => {
 	}
 };
 
+// This function takes user input to change what role a current employee has
 const updateEmployeeRole = async (employee) => {
 	const role = await db("SELECT title AS name FROM role");
 
@@ -652,6 +669,7 @@ const updateEmployeeRole = async (employee) => {
 	employeeMenu();
 };
 
+// This function takes user input to change what manager an employee currently has
 const updateEmployeeManager = async (employee) => {
 	const roleNum = await db(
 		"SELECT role_id AS roleId FROM employee WHERE first_name = ? AND last_name = ?",
@@ -706,6 +724,7 @@ const updateEmployeeManager = async (employee) => {
 	employeeMenu();
 };
 
+// This function takes user input to add a new employee to the employee table in the database
 const addEmployee = async () => {
 	const role = await db("SELECT title AS name FROM role");
 
@@ -777,6 +796,7 @@ const addEmployee = async () => {
 	employeeMenu();
 };
 
+// This function removes a current employee from the database
 const removeEmployee = async () => {
 	const employees = await db(
 		"SELECT CONCAT(first_name, ' ', last_name) AS name FROM employee"
@@ -804,4 +824,5 @@ const removeEmployee = async () => {
 	}
 };
 
+// this then exports the function so that the index.js does not have 800 some odd lines of code
 module.exports = startMenu;
